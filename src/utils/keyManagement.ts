@@ -41,14 +41,35 @@ export const getExistingValidKey = async (): Promise<Key | null> => {
 
 export const claimKey = async (key: string, hwid: string): Promise<boolean> => {
   try {
-    const { error } = await supabase
+    // First check if key exists and is unclaimed
+    const { data: keyData, error: checkError } = await supabase
+      .from('keys')
+      .select('*')
+      .eq('key', key)
+      .maybeSingle();
+
+    if (checkError || !keyData) {
+      console.error('Error checking key:', checkError);
+      return false;
+    }
+
+    // If key is already claimed
+    if (keyData.hwid) {
+      if (keyData.hwid === hwid) {
+        return true; // Already claimed by this user
+      }
+      return false; // Claimed by someone else
+    }
+
+    // Claim the key
+    const { error: updateError } = await supabase
       .from('keys')
       .update({ hwid })
-      .match({ key, hwid: null })
+      .eq('key', key)
       .is('hwid', null);
 
-    if (error) {
-      console.error('Error claiming key:', error);
+    if (updateError) {
+      console.error('Error claiming key:', updateError);
       return false;
     }
 
@@ -58,6 +79,7 @@ export const claimKey = async (key: string, hwid: string): Promise<boolean> => {
     return false;
   }
 };
+
 
 export const startKeyValidityCheck = () => {
   const checkKeyValidity = async () => {
