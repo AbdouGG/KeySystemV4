@@ -7,6 +7,22 @@ const supabase = createClient(
 );
 
 export const handler: Handler = async (event) => {
+  // Add CORS headers
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
+  };
+
+  // Handle preflight requests
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 204,
+      headers,
+      body: '',
+    };
+  }
+
   // Get the checkpoint number and HWID from the URL
   const parts = event.path.split('/');
   const checkpointNumber = parseInt(parts[parts.length - 2], 10);
@@ -15,6 +31,7 @@ export const handler: Handler = async (event) => {
   if (!checkpointNumber || !hwid) {
     return {
       statusCode: 400,
+      headers,
       body: JSON.stringify({ error: 'Missing checkpoint number or HWID' }),
     };
   }
@@ -35,6 +52,7 @@ export const handler: Handler = async (event) => {
       return {
         statusCode: 302,
         headers: {
+          ...headers,
           Location: `/checkpoint/${checkpointNumber}?token=${encodeURIComponent(
             existingToken.token
           )}`,
@@ -54,6 +72,7 @@ export const handler: Handler = async (event) => {
     if (count && count >= 3) {
       return {
         statusCode: 429,
+        headers,
         body: JSON.stringify({
           error: 'Too many verification attempts. Please wait 5 minutes.',
         }),
@@ -82,6 +101,7 @@ export const handler: Handler = async (event) => {
     return {
       statusCode: 302,
       headers: {
+        ...headers,
         Location: `/checkpoint/${checkpointNumber}?token=${encodeURIComponent(
           token
         )}`,
@@ -92,6 +112,7 @@ export const handler: Handler = async (event) => {
     console.error('Error handling verification:', error);
     return {
       statusCode: 500,
+      headers,
       body: JSON.stringify({ error: 'Failed to process verification' }),
     };
   }

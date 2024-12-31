@@ -39,6 +39,26 @@ export const getExistingValidKey = async (): Promise<Key | null> => {
   }
 };
 
+export const claimKey = async (key: string, hwid: string): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('keys')
+      .update({ hwid })
+      .match({ key, hwid: null })
+      .is('hwid', null);
+
+    if (error) {
+      console.error('Error claiming key:', error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error in claimKey:', error);
+    return false;
+  }
+};
+
 export const startKeyValidityCheck = () => {
   const checkKeyValidity = async () => {
     await checkKeyExpiration();
